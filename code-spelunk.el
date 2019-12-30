@@ -121,6 +121,34 @@ See: `spelunk--record-navigation-event'."
                                                                            :sub-nodes '())))))))))
   (spelunk--find-by-sub-node-identifier tree 'blerg))
 
+(cl-defmethod spelunk--print-tree ((tree spelunk-tree))
+  "Print TREE vertically so that the start of your search is at the top."
+  (cl-labels
+      ((iter (trees)
+         (dolist (tree trees)
+           (let ((width-of-children (apply #'+ (mapcar #'spelunk--max-width
+                                                       (oref tree :sub-nodes)))))
+             (cl-loop for i from 0 below width-of-children
+                      for is-middle = (eq i (/ width-of-children 2))
+                      when is-middle do (insert "O")
+                      when (not is-middle) do (insert " "))))
+         (insert "\n")
+         (let ((next-round (thread-last (mapcar (lambda (sub-node) (oref sub-node :sub-nodes)) trees)
+                             (cl-remove 'nil)
+                             (apply #'append))))
+           (when next-round (iter next-round)))))
+    (insert "\n")
+    (iter (list tree))))
+
+(cl-defmethod spelunk--max-width ((tree spelunk-tree))
+  "Produce a count of all leaves in TREE.
+This is used when printing a tree to determine how much space to
+leave for printing children."
+  (cl-loop
+   for sub-node in (oref tree :sub-nodes)
+   summing (or (and (null (oref sub-node :sub-nodes)) 1)
+               (spelunk--max-width sub-node))))
+
 (defun spelunk--update-navigation-tree (new-tree)
   "Set the current tree for this project to NEW-TREE."
   (cl-declaim (type 'spelunk-history-record new-tree))
