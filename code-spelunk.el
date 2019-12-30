@@ -41,6 +41,8 @@ node."
 (defvar spelunk--trees-per-project (make-hash-table :test #'equal)
   "A record of the navigations made per project.")
 
+;; TODO: needs to handle the case that xref didn't find a tag
+;; (maybe?).
 (defun spelunk--record-navigation-event (&optional identifier)
   "Append the navigation event which just occured to the current node.
 
