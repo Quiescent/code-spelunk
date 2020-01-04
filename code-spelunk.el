@@ -58,21 +58,21 @@ If we were navigating to the definition (i.e. using
 `xref-find-definitions') then IDENTIFIER is the name of the
 symbol which we're heading to.  If we're going back (i.e. using
 `xref-pop-marker-stack'), then it'll be null."
-  (cl-declaim (type (or 'string 'null) identifier))
+  (cl-declare (type (or 'string 'null) identifier))
   (pcase (spelunk--retrieve-navigation-tree)
     (`(,root . ,current-node)
      (spelunk--update-navigation-tree
       (if identifier
           (let ((key       (intern identifier))
                 (sub-nodes (oref current-node :sub-nodes)))
-            (cl-labels ((find-sub-node (sub-node) (eq (oref sub-node :node-tag) key))))
-            (if (some #'find-sub-node sub-nodes)
+            (cl-labels ((find-sub-node (sub-node) (eq (oref sub-node :node-tag) key)))
+              (if (some #'find-sub-node sub-nodes)
                 (cons root (find-if #'find-sub-node sub-nodes))
               (let* ((sub-node (make-instance 'spelunk-tree
                                               :node-tag key
                                               :sub-nodes '())))
                 (push sub-node (oref current-node :sub-nodes))
-                (cons root sub-node))))
+                (cons root sub-node)))))
         (cons root
               (spelunk--find-by-sub-node-identifier root
                                                     (oref current-node :node-tag))))))))
@@ -91,59 +91,83 @@ See: `spelunk--record-navigation-event'."
 
 (cl-defmethod spelunk--find-by-sub-node-identifier ((tree spelunk-tree) identifier)
   "Find the node in TREE which is identified by IDENTIFIER."
-  (cl-declaim (type 'symbol identifier))
-  (or (and (cl-loop
-            for sub-node in (oref tree :sub-nodes)
-            when (eq (oref sub-node :node-tag) identifier) return t)
-           tree)
+  (cl-declare (type 'symbol identifier))
+  (or (cl-loop
+       for sub-node in (oref tree :sub-nodes)
+       when (eq (oref sub-node :node-tag) identifier) return tree)
       (cl-loop
        for sub-node in (oref tree :sub-nodes)
        for found = (spelunk--find-by-sub-node-identifier sub-node identifier)
        when found return found)))
 
 ;; Example tree
-(let ((tree (make-instance
-             'spelunk-tree
-             :node-tag 'blah
-             :sub-nodes (list (make-instance
-                               'spelunk-tree
-                               :node-tag 'blah
-                               :sub-nodes (list (make-instance
-                                                 'spelunk-tree
-                                                 :node-tag 'haha
-                                                 :sub-nodes '())
-                                                (make-instance
-                                                 'spelunk-tree
-                                                 :node-tag 'hehe
-                                                 :sub-nodes '())))
-                              (make-instance
-                               'spelunk-tree
-                               :node-tag 'teehee
-                               :sub-nodes (list (make-instance
-                                                 'spelunk-tree
-                                                 :node-tag 'test
-                                                 :sub-nodes (list (make-instance 'spelunk-tree
-                                                                                 :node-tag 'blerg
-                                                                                 :sub-nodes '())))))))))
-  (spelunk--find-by-sub-node-identifier tree 'blerg))
+(let* ((right-tree (make-instance
+                    'spelunk-tree
+                    :node-tag 'teehee
+                    :sub-nodes (list (make-instance
+                                      'spelunk-tree
+                                      :node-tag 'test
+                                      :sub-nodes (list (make-instance 'spelunk-tree
+                                                                      :node-tag 'blerg
+                                                                      :sub-nodes '()))))))
+       (tree (make-instance
+              'spelunk-tree
+              :node-tag 'blah
+              :sub-nodes (list (make-instance
+                                'spelunk-tree
+                                :node-tag 'blah
+                                :sub-nodes (list (make-instance
+                                                  'spelunk-tree
+                                                  :node-tag 'haha
+                                                  :sub-nodes '())
+                                                 (make-instance
+                                                  'spelunk-tree
+                                                  :node-tag 'hehe
+                                                  :sub-nodes '())))
+                               right-tree))))
+  (spelunk--print-tree tree right-tree))
 
-(cl-defmethod spelunk--print-tree ((tree spelunk-tree))
-  "Print TREE vertically so that the start of your search is at the top."
+(defvar spelunk--empty-width 4
+  "The width of an empty node.
+
+This will disappear when we're not just printing O's.")
+
+(defun spelunk--one-if-zero (x)
+  "If X is 0 then 1 else X."
+  (if (eq x 0) 1 x))
+
+(cl-defmethod spelunk--print-tree ((tree spelunk-tree) current-node)
+  "Print TREE vertically so that the start of your search is at the top.
+
+CURRENT-NODE is printed in *bold* to indicate that it's the
+current node."
   (cl-labels
       ((iter (trees)
              (progn
                (dolist (tree trees)
-                 (let ((width-of-children (* 4 (apply #'+ (mapcar #'spelunk--max-width
-                                                                  (oref tree :sub-nodes))))))
+                 (let* ((is-number (numberp tree))
+                        (width-of-children (if is-number
+                                               tree
+                                             (* spelunk--empty-width (spelunk--one-if-zero
+                                                                      (apply #'+ (mapcar #'spelunk--max-width
+                                                                                         (oref tree :sub-nodes))))))))
                    (cl-loop for i from 0 below width-of-children
                             for is-middle = (eq i (/ width-of-children 2))
-                            when is-middle do (insert "O")
-                            when (not is-middle) do (insert " "))))
+                            when (and (not is-number) is-middle) do (insert "O")
+                            when (eq current-node tree) do (overlay-put (make-overlay (1- (point)) (point)) 'face 'bold)
+                            when (or is-number (not is-middle)) do (insert " "))))
                (insert "\n")
-               (let ((next-round (thread-last (mapcar (lambda (sub-node) (oref sub-node :sub-nodes)) trees)
-                                   (cl-remove 'nil)
+               (let ((next-round (thread-last (mapcar (lambda (sub-node)
+                                                        (if (numberp sub-node)
+                                                            (list sub-node)
+                                                          (oref sub-node :sub-nodes))) trees)
+                                   (mapcar (lambda (sub-node) (if (null sub-node)
+                                                                  (list spelunk--empty-width)
+                                                                sub-node)))
                                    (apply #'append))))
-                 (when next-round (iter next-round))))))
+                 (when (and next-round
+                            (not (cl-every #'numberp next-round)))
+                   (iter next-round))))))
     (insert "\n")
     (iter (list tree))))
 
@@ -151,14 +175,15 @@ See: `spelunk--record-navigation-event'."
   "Produce a count of all leaves in TREE.
 This is used when printing a tree to determine how much space to
 leave for printing children."
-  (cl-loop
-   for sub-node in (oref tree :sub-nodes)
-   summing (or (and (null (oref sub-node :sub-nodes)) 1)
-               (spelunk--max-width sub-node))))
+  (spelunk--one-if-zero
+   (cl-loop
+    for sub-node in (oref tree :sub-nodes)
+    summing (or (and (null (oref sub-node :sub-nodes)) 1)
+                (spelunk--max-width sub-node)))))
 
 (defun spelunk--update-navigation-tree (new-tree)
   "Set the current tree for this project to NEW-TREE."
-  (cl-declaim (type 'spelunk-history-record new-tree))
+  (cl-declare (type 'spelunk-history-record new-tree))
   (let ((existing-tree-key  (thread-last (project-roots (project-current))
                               (cl-remove-if-not (apply-partially #'map-contains-key
                                                                  spelunk--trees-per-project))
