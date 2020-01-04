@@ -101,30 +101,31 @@ See: `spelunk--record-navigation-event'."
        when found return found)))
 
 ;; Example tree
-(let ((tree (make-instance
-             'spelunk-tree
-             :node-tag 'blah
-             :sub-nodes (list (make-instance
-                               'spelunk-tree
-                               :node-tag 'blah
-                               :sub-nodes (list (make-instance
-                                                 'spelunk-tree
-                                                 :node-tag 'haha
-                                                 :sub-nodes '())
-                                                (make-instance
-                                                 'spelunk-tree
-                                                 :node-tag 'hehe
-                                                 :sub-nodes '())))
-                              (make-instance
-                               'spelunk-tree
-                               :node-tag 'teehee
-                               :sub-nodes (list (make-instance
-                                                 'spelunk-tree
-                                                 :node-tag 'test
-                                                 :sub-nodes (list (make-instance 'spelunk-tree
-                                                                                 :node-tag 'blerg
-                                                                                 :sub-nodes '())))))))))
-  (spelunk--find-by-sub-node-identifier tree 'blerg))
+(let* ((right-tree (make-instance
+                    'spelunk-tree
+                    :node-tag 'teehee
+                    :sub-nodes (list (make-instance
+                                      'spelunk-tree
+                                      :node-tag 'test
+                                      :sub-nodes (list (make-instance 'spelunk-tree
+                                                                      :node-tag 'blerg
+                                                                      :sub-nodes '()))))))
+       (tree (make-instance
+              'spelunk-tree
+              :node-tag 'blah
+              :sub-nodes (list (make-instance
+                                'spelunk-tree
+                                :node-tag 'blah
+                                :sub-nodes (list (make-instance
+                                                  'spelunk-tree
+                                                  :node-tag 'haha
+                                                  :sub-nodes '())
+                                                 (make-instance
+                                                  'spelunk-tree
+                                                  :node-tag 'hehe
+                                                  :sub-nodes '())))
+                               right-tree))))
+  (spelunk--print-tree tree right-tree))
 
 (defvar spelunk--empty-width 4
   "The width of an empty node.
@@ -135,8 +136,11 @@ This will disappear when we're not just printing O's.")
   "If X is 0 then 1 else X."
   (if (eq x 0) 1 x))
 
-(cl-defmethod spelunk--print-tree ((tree spelunk-tree))
-  "Print TREE vertically so that the start of your search is at the top."
+(cl-defmethod spelunk--print-tree ((tree spelunk-tree) current-node)
+  "Print TREE vertically so that the start of your search is at the top.
+
+CURRENT-NODE is printed in *bold* to indicate that it's the
+current node."
   (cl-labels
       ((iter (trees)
              (progn
@@ -150,6 +154,7 @@ This will disappear when we're not just printing O's.")
                    (cl-loop for i from 0 below width-of-children
                             for is-middle = (eq i (/ width-of-children 2))
                             when (and (not is-number) is-middle) do (insert "O")
+                            when (eq current-node tree) do (overlay-put (make-overlay (1- (point)) (point)) 'face 'bold)
                             when (or is-number (not is-middle)) do (insert " "))))
                (insert "\n")
                (let ((next-round (thread-last (mapcar (lambda (sub-node)
