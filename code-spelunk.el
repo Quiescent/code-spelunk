@@ -19,10 +19,10 @@
   '(satisfies spelunk-list-of-spelunk-tree-p))
 
 (defclass spelunk-tree ()
-  ((node-tag  :initarg :node-tag
-              :type symbol)
-   (sub-nodes :initarg :sub-nodes
-              :type spelunk-list-of-spelunk-tree))
+     ((node-tag  :initarg :node-tag
+                 :type symbol)
+      (sub-nodes :initarg :sub-nodes
+                 :type spelunk-list-of-spelunk-tree))
   "A node the tree of code navigation actions taken in a spelunking session.")
 
 (defun spelunk-history-record-p (x)
@@ -61,21 +61,21 @@ symbol which we're heading to.  If we're going back (i.e. using
   (cl-declare (type (or 'string 'null) identifier))
   (pcase (spelunk--retrieve-navigation-tree)
     (`(,root . ,current-node)
-     (spelunk--update-navigation-tree
-      (if identifier
-          (let ((key       (intern identifier))
-                (sub-nodes (oref current-node :sub-nodes)))
-            (cl-labels ((find-sub-node (sub-node) (eq (oref sub-node :node-tag) key)))
-              (if (some #'find-sub-node sub-nodes)
-                (cons root (find-if #'find-sub-node sub-nodes))
-              (let* ((sub-node (make-instance 'spelunk-tree
-                                              :node-tag key
-                                              :sub-nodes '())))
-                (push sub-node (oref current-node :sub-nodes))
-                (cons root sub-node)))))
-        (cons root
-              (spelunk--find-by-sub-node-identifier root
-                                                    (oref current-node :node-tag))))))))
+      (spelunk--update-navigation-tree
+       (if identifier
+           (let ((key       (intern identifier))
+                 (sub-nodes (oref current-node :sub-nodes)))
+             (cl-labels ((find-sub-node (sub-node) (eq (oref sub-node :node-tag) key)))
+               (if (some #'find-sub-node sub-nodes)
+                   (cons root (find-if #'find-sub-node sub-nodes))
+                   (let* ((sub-node (make-instance 'spelunk-tree
+                                       :node-tag key
+                                       :sub-nodes '())))
+                     (push sub-node (oref current-node :sub-nodes))
+                     (cons root sub-node)))))
+           (cons root
+                 (spelunk--find-by-sub-node-identifier root
+                                                       (oref current-node :node-tag))))))))
 
 (defun spelunk--start-recording ()
   "Start recording code navigation events on a per-project basis.
@@ -100,33 +100,6 @@ See: `spelunk--record-navigation-event'."
        for found = (spelunk--find-by-sub-node-identifier sub-node identifier)
        when found return found)))
 
-;; Example tree
-(let* ((right-tree (make-instance
-                    'spelunk-tree
-                    :node-tag 'teehee
-                    :sub-nodes (list (make-instance
-                                      'spelunk-tree
-                                      :node-tag 'test
-                                      :sub-nodes (list (make-instance 'spelunk-tree
-                                                                      :node-tag 'blerg
-                                                                      :sub-nodes '()))))))
-       (tree (make-instance
-              'spelunk-tree
-              :node-tag 'blah
-              :sub-nodes (list (make-instance
-                                'spelunk-tree
-                                :node-tag 'blah
-                                :sub-nodes (list (make-instance
-                                                  'spelunk-tree
-                                                  :node-tag 'haha
-                                                  :sub-nodes '())
-                                                 (make-instance
-                                                  'spelunk-tree
-                                                  :node-tag 'hehe
-                                                  :sub-nodes '())))
-                               right-tree))))
-  (spelunk--print-tree tree right-tree))
-
 (defvar spelunk--empty-width 4
   "The width of an empty node.
 
@@ -143,31 +116,31 @@ CURRENT-NODE is printed in *bold* to indicate that it's the
 current node."
   (cl-labels
       ((iter (trees)
-             (progn
-               (dolist (tree trees)
-                 (let* ((is-number (numberp tree))
-                        (width-of-children (if is-number
-                                               tree
-                                             (* spelunk--empty-width (spelunk--one-if-zero
-                                                                      (apply #'+ (mapcar #'spelunk--max-width
-                                                                                         (oref tree :sub-nodes))))))))
-                   (cl-loop for i from 0 below width-of-children
-                            for is-middle = (eq i (/ width-of-children 2))
-                            when (and (not is-number) is-middle) do (insert "O")
-                            when (eq current-node tree) do (overlay-put (make-overlay (1- (point)) (point)) 'face 'bold)
-                            when (or is-number (not is-middle)) do (insert " "))))
-               (insert "\n")
-               (let ((next-round (thread-last (mapcar (lambda (sub-node)
-                                                        (if (numberp sub-node)
-                                                            (list sub-node)
-                                                          (oref sub-node :sub-nodes))) trees)
-                                   (mapcar (lambda (sub-node) (if (null sub-node)
-                                                                  (list spelunk--empty-width)
-                                                                sub-node)))
-                                   (apply #'append))))
-                 (when (and next-round
-                            (not (cl-every #'numberp next-round)))
-                   (iter next-round))))))
+         (progn
+           (dolist (tree trees)
+             (let* ((is-number (numberp tree))
+                    (width-of-children (if is-number
+                                           tree
+                                           (* spelunk--empty-width (spelunk--one-if-zero
+                                                                    (apply #'+ (mapcar #'spelunk--max-width
+                                                                                       (oref tree :sub-nodes))))))))
+               (cl-loop for i from 0 below width-of-children
+                        for is-middle = (eq i (/ width-of-children 2))
+                        when (and (not is-number) is-middle) do (insert "O")
+                        when (eq current-node tree) do (overlay-put (make-overlay (1- (point)) (point)) 'face 'bold)
+                        when (or is-number (not is-middle)) do (insert " "))))
+           (insert "\n")
+           (let ((next-round (thread-last (mapcar (lambda (sub-node)
+                                                    (if (numberp sub-node)
+                                                        (list sub-node)
+                                                        (oref sub-node :sub-nodes))) trees)
+                               (mapcar (lambda (sub-node) (if (null sub-node)
+                                                              (list spelunk--empty-width)
+                                                              sub-node)))
+                               (apply #'append))))
+             (when (and next-round
+                        (not (cl-every #'numberp next-round)))
+               (iter next-round))))))
     (insert "\n")
     (iter (list tree))))
 
@@ -203,13 +176,42 @@ leave for printing children."
                                (car))))
     (if existing-tree-key
         (gethash existing-tree-key spelunk--trees-per-project)
-      ;; TODO: assuming that it's the first project here.  See
-      ;; previous note.
-      (setf (map-elt spelunk--trees-per-project (car candidate-projects))
-            (let ((tree (make-instance 'spelunk-tree
-                                       :node-tag 'root
-                                       :sub-nodes '())))
-              (cons tree tree))))))
+        ;; TODO: assuming that it's the first project here.  See
+        ;; previous note.
+        (setf (map-elt spelunk--trees-per-project (car candidate-projects))
+              (let ((tree (make-instance 'spelunk-tree
+                             :node-tag 'root
+                             :sub-nodes '())))
+                (cons tree tree))))))
+
+
+
+;; Example tree
+(let* ((right-tree (make-instance
+                                  'spelunk-tree
+                      :node-tag 'teehee
+                      :sub-nodes (list (make-instance
+                                                      'spelunk-tree
+                                          :node-tag 'test
+                                          :sub-nodes (list (make-instance 'spelunk-tree
+                                                              :node-tag 'blerg
+                                                              :sub-nodes '()))))))
+       (tree (make-instance
+                            'spelunk-tree
+                :node-tag 'blah
+                :sub-nodes (list (make-instance
+                                                'spelunk-tree
+                                    :node-tag 'blah
+                                    :sub-nodes (list (make-instance
+                                                                    'spelunk-tree
+                                                        :node-tag 'haha
+                                                        :sub-nodes '())
+                                                     (make-instance
+                                                                    'spelunk-tree
+                                                        :node-tag 'hehe
+                                                        :sub-nodes '())))
+                                 right-tree))))
+  (spelunk--print-tree tree right-tree))
 
 (provide 'code-spelunk)
 ;;; code-spelunk ends here
