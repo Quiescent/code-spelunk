@@ -91,13 +91,15 @@ symbol which we're heading to.  If we're going back (i.e. using
 
 Window will exist for `spelunk--show-history-duration' before
 dissapearing."
-  (let ((history-buffer-name (spelunk--history-buffer-name)))
+  (let ((history-buffer-name (spelunk--history-buffer-name))
+        (original-window     (selected-window)))
     (with-current-buffer (switch-to-buffer-other-window (get-buffer-create history-buffer-name))
       (when spelunk-history-view-mode
         (spelunk-history-view-mode -1))
       (spelunk-history-view-mode 1))
     ;; Maybe trigger the close on the next command instead
-    (run-at-time 1 nil (lambda () (spelunk--close-window-by-buffer-name history-buffer-name)))))
+    (run-at-time 1 nil (lambda () (spelunk--close-window-by-buffer-name history-buffer-name)))
+    (select-window original-window)))
 
 (cl-defmethod spelunk--node-name ((tree spelunk-tree))
   "Produce a name for TREE which is suitable for printing in a tree."
