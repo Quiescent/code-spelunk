@@ -10,6 +10,27 @@
 (require 'subr-x)
 (require 'project)
 
+(defgroup spelunk nil
+  "The customisation options for spelunk."
+  :version 26.3
+  :group 'tools)
+
+(defcustom spelunk-show-history-behaviour 'show-until-next-command
+  "What to do with the history window when it pops up."
+  :group 'spelunk
+  :type 'symbol
+  :options '(show-until-next-command
+             show-indefinitely
+             show-until-seconds))
+
+(defcustom spelunk-show-history-seconds 1
+  "How long to show history.
+
+Effective when `spelunk-show-history-behaviour' is set to
+'show-until-seconds."
+  :group 'spelunk
+  :type 'number)
+
 (defun spelunk-list-of-spelunk-tree-p (x)
   "Produce t if X is a list of `spelunk-tree's."
   (cl-every #'spelunk-tree-p x))
@@ -80,10 +101,13 @@ symbol which we're heading to.  If we're going back (i.e. using
 (defun spelunk--close-window-by-buffer-name (buffer-name)
   "Close the window which is currently showing BUFFER-NAME."
   (let ((original-window (selected-window)))
-    (cl-loop
-     for window being the windows
-     when (equal buffer-name (buffer-name (window-buffer window)))
-     do (select-window window) (call-interactively #'quit-window))
+    (thread-last (cl-loop
+                  for window being the windows
+                  when (equal buffer-name (buffer-name (window-buffer window)))
+                  collect window)
+      (mapc (lambda (window) (progn
+                               (select-window window)
+                               (call-interactively #'quit-window)))))
     (select-window original-window)))
 
 (defun spelunk-show-history (&rest _)
@@ -97,8 +121,18 @@ dissapearing."
       (when spelunk-history-view-mode
         (spelunk-history-view-mode -1))
       (spelunk-history-view-mode 1))
-    ;; Maybe trigger the close on the next command instead
-    (run-at-time 1 nil (lambda () (spelunk--close-window-by-buffer-name history-buffer-name)))
+    (cl-case spelunk-show-history-behaviour
+      (show-until-next-command
+       (cl-labels ((close-spelunk-history (&rest _) (progn
+                                                      (spelunk--close-window-by-buffer-name history-buffer-name)
+                                                      (remove-hook 'post-command-hook #'close-spelunk-history))))
+         (run-at-time 0.1 nil (lambda () (add-hook 'post-command-hook #'close-spelunk-history)))))
+      (show-until-seconds
+       (run-at-time spelunk-show-history-seconds
+                    nil
+                    (lambda ()
+                      (spelunk--close-window-by-buffer-name history-buffer-name))))
+      (show-indefinitely nil))
     (select-window original-window)))
 
 (cl-defmethod spelunk--node-name ((tree spelunk-tree))
