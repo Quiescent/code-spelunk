@@ -213,6 +213,7 @@ Node is aligned according to the width of all it's children."
          (node-name (or (and is-name tree)
                         (spelunk--node-name tree)))
          (name-length (length node-name))
+         ;; Problem is that this padding is added per sub node...
          (max-width (+ 2 (if is-name
                              name-length
                            (spelunk--max-width tree))))
