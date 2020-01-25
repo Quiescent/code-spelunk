@@ -100,6 +100,7 @@ symbol which we're heading to.  If we're going back (i.e. using
 
 (defun spelunk--close-window-by-buffer-name (buffer-name)
   "Close the window which is currently showing BUFFER-NAME."
+  (cl-declare (type 'string buffer-name))
   (let ((original-window (selected-window)))
     (thread-last (cl-loop
                   for window being the windows
@@ -206,7 +207,8 @@ See: `spelunk--record-navigation-event'."
 Print CURRENT-NODE in bold to indicate that it's current.
 
 Node is aligned according to the width of all it's children."
-  (cl-declare (type 'spelunk-tree-or-label tree))
+  (cl-declare (type 'spelunk-tree-or-label tree)
+              (type 'spelunk-tree current-node))
   (let* ((is-name (stringp tree))
          (node-name (or (and is-name tree)
                         (spelunk--node-name tree)))
