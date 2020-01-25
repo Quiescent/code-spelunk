@@ -231,15 +231,16 @@ Node is aligned according to the width of all it's children."
 
 (defun spelunk--generate-next-nodes (nodes)
   "Expand NODES to a flat list of their child nodes."
+  ;; Problem with this declare for some reason.  It's not ensuring the type...
   (cl-declare (type 'spelunk-list-of-spelunk-tree nodes))
   (thread-last (mapcar (lambda (sub-node)
                          (if (stringp sub-node)
-                             sub-node
+                             (list sub-node)
                            (let ((sub-nodes (slot-value sub-node 'sub-nodes)))
                              (if sub-nodes
                                  sub-nodes
                                (or (and (listp sub-node) sub-node)
-                                   (list (replace-regexp-in-string ".*"
+                                   (list (replace-regexp-in-string "."
                                                                    " "
                                                                    (spelunk--node-name sub-node))))))))
                        nodes)
