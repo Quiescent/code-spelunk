@@ -193,9 +193,9 @@ See: `spelunk--record-navigation-event'."
        for found = (spelunk--find-by-sub-node-identifier sub-node identifier)
        when found return found)))
 
-(defun spelunk--one-if-zero (x)
-  "If X is 0 then 1 else X."
-  (if (eq x 0) 1 x))
+(defun spelunk--other-if-zero (other x)
+  "Produce OTHER if X is 0 else X."
+  (if (eq x 0) other x))
 
 (cl-deftype spelunk-tree-or-label ()
   "Either a spelunk tree or the name of a node in such a tree."
@@ -270,13 +270,13 @@ current node."
   "Produce a count of all leaves in TREE.
 This is used when printing a tree to determine how much space to
 leave for printing children."
-  (spelunk--one-if-zero
-   (cl-loop
-    for sub-node in (slot-value tree 'sub-nodes)
-    for current-width = (length (spelunk--node-name sub-node))
-    summing (max current-width (or (and (null (slot-value sub-node 'sub-nodes))
-                                        current-width)
-                                   (spelunk--max-width sub-node))))))
+  (spelunk--other-if-zero (length (spelunk--node-name tree))
+                          (cl-loop
+                           for sub-node in (slot-value tree 'sub-nodes)
+                           for current-width = (length (spelunk--node-name sub-node))
+                           summing (max current-width (or (and (null (slot-value sub-node 'sub-nodes))
+                                                               current-width)
+                                                          (spelunk--max-width sub-node))))))
 
 (defun spelunk--update-navigation-tree (new-tree)
   "Set the current tree for this project to NEW-TREE."
