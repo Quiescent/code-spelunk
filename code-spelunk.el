@@ -85,18 +85,18 @@ symbol which we're heading to.  If we're going back (i.e. using
      (spelunk--update-navigation-tree
       (if identifier
           (let ((key       (intern identifier))
-                (sub-nodes (oref current-node :sub-nodes)))
-            (cl-labels ((find-sub-node (sub-node) (eq (oref sub-node :node-tag) key)))
+                (sub-nodes (slot-value current-node 'sub-nodes)))
+            (cl-labels ((find-sub-node (sub-node) (eq (slot-value sub-node 'node-tag) key)))
               (if (some #'find-sub-node sub-nodes)
                   (cons root (find-if #'find-sub-node sub-nodes))
                 (let* ((sub-node (make-instance 'spelunk-tree
-                                                :node-tag key
-                                                :sub-nodes '())))
-                  (push sub-node (oref current-node :sub-nodes))
+                                                'node-tag key
+                                                'sub-nodes '())))
+                  (push sub-node (slot-value current-node 'sub-nodes))
                   (cons root sub-node)))))
         (cons root
               (spelunk--find-by-sub-node-identifier root
-                                                    (oref current-node :node-tag))))))))
+                                                    (slot-value current-node 'node-tag))))))))
 
 (defun spelunk--close-window-by-buffer-name (buffer-name)
   "Close the window which is currently showing BUFFER-NAME."
@@ -109,6 +109,21 @@ symbol which we're heading to.  If we're going back (i.e. using
                                (select-window window)
                                (call-interactively #'quit-window)))))
     (select-window original-window)))
+
+(define-minor-mode spelunk-history-view-mode
+  "Sets up a buffer for viewing the history of code navigations."
+  :init-value nil
+  :lighter " Spelunk"
+  :group 'spelunk
+  (pcase (spelunk--retrieve-navigation-tree)
+    (`(,root . ,current-node)
+     (progn
+       (read-only-mode -1)
+       (delete-region (point-min) (point-max))
+       (spelunk--print-tree root current-node)
+       (read-only-mode 1)
+       (goto-char (point-min))
+       (search-forward (spelunk--node-name current-node))))))
 
 (defun spelunk-show-history (&rest _)
   "Show the history of code navigations in other window.
@@ -137,22 +152,7 @@ dissapearing."
 
 (cl-defmethod spelunk--node-name ((tree spelunk-tree))
   "Produce a name for TREE which is suitable for printing in a tree."
-  (symbol-name (oref tree :node-tag)))
-
-(define-minor-mode spelunk-history-view-mode
-  "Sets up a buffer for viewing the history of code navigations."
-  :init-value nil
-  :lighter " Spelunk"
-  :group 'spelunk
-  (pcase (spelunk--retrieve-navigation-tree)
-    (`(,root . ,current-node)
-     (progn
-       (read-only-mode -1)
-       (delete-region (point-min) (point-max))
-       (spelunk--print-tree root current-node)
-       (read-only-mode 1)
-       (goto-char (point-min))
-       (search-forward (spelunk--node-name current-node))))))
+  (symbol-name (slot-value tree 'node-tag)))
 
 (defun spelunk--history-buffer-name ()
   "Create a name for the buffer to show the code navigation.
@@ -185,10 +185,10 @@ See: `spelunk--record-navigation-event'."
   "Find the node in TREE which is identified by IDENTIFIER."
   (cl-declare (type 'symbol identifier))
   (or (cl-loop
-       for sub-node in (oref tree :sub-nodes)
-       when (eq (oref sub-node :node-tag) identifier) return tree)
+       for sub-node in (slot-value tree 'sub-nodes)
+       when (eq (slot-value sub-node 'node-tag) identifier) return tree)
       (cl-loop
-       for sub-node in (oref tree :sub-nodes)
+       for sub-node in (slot-value tree 'sub-nodes)
        for found = (spelunk--find-by-sub-node-identifier sub-node identifier)
        when found return found)))
 
@@ -212,7 +212,7 @@ current node."
                         (width-of-children (if is-name
                                                name-length
                                              (apply #'+ (mapcar #'spelunk--max-width
-                                                                (oref tree :sub-nodes)))))
+                                                                (slot-value tree 'sub-nodes)))))
                         (max-width (+ 2 (max name-length width-of-children)))
                         (whitespace-padding (/ (- max-width name-length) 2))
                         (left-padding (ceiling whitespace-padding))
@@ -231,7 +231,7 @@ current node."
                       (thread-last (mapcar (lambda (sub-node)
                                              (if (stringp sub-node)
                                                  (list sub-node)
-                                               (let ((sub-nodes (oref sub-node :sub-nodes)))
+                                               (let ((sub-nodes (slot-value sub-node 'sub-nodes)))
                                                  (if sub-nodes
                                                      sub-nodes
                                                    (or (and (listp sub-node) sub-node)
@@ -250,8 +250,8 @@ This is used when printing a tree to determine how much space to
 leave for printing children."
   (spelunk--one-if-zero
    (cl-loop
-    for sub-node in (oref tree :sub-nodes)
-    summing (or (and (null (oref sub-node :sub-nodes))
+    for sub-node in (slot-value tree 'sub-nodes)
+    summing (or (and (null (slot-value sub-node 'sub-nodes))
                      (length (spelunk--node-name sub-node)))
                 (spelunk--max-width sub-node)))))
 
