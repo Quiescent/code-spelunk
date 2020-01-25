@@ -196,48 +196,67 @@ See: `spelunk--record-navigation-event'."
   "If X is 0 then 1 else X."
   (if (eq x 0) 1 x))
 
+(cl-deftype spelunk-tree-or-label ()
+  "Either a spelunk tree or the name of a node in such a tree."
+  '(or spelunk-tree string))
+
+(defun spelunk--print-node (tree current-node)
+  "Print TREE's label.
+
+Print CURRENT-NODE in bold to indicate that it's current.
+
+Node is aligned according to the width of all it's children."
+  (cl-declare (type 'spelunk-tree-or-label tree))
+  (let* ((is-name (stringp tree))
+         (node-name (or (and is-name tree)
+                        (spelunk--node-name tree)))
+         (name-length (length node-name))
+         (width-of-children (if is-name
+                                name-length
+                              (apply #'+ (mapcar #'spelunk--max-width
+                                                 (slot-value tree 'sub-nodes)))))
+         (max-width (+ 2 (max name-length width-of-children)))
+         (whitespace-padding (/ (- max-width name-length) 2))
+         (left-padding (ceiling whitespace-padding))
+         (right-padding (floor whitespace-padding)))
+    (cl-loop for i from 0 below left-padding
+             do (insert " "))
+    (insert node-name)
+    (when (eq tree current-node)
+      (overlay-put (make-overlay (- (point) name-length) (point))
+                   'face
+                   'bold))
+    (cl-loop for i from 0 below right-padding
+             do (insert " "))))
+
+(defun spelunk--generate-next-nodes (nodes)
+  "Expand NODES to a flat list of their child nodes."
+  (cl-declare (type 'spelunk-list-of-spelunk-tree nodes))
+  (thread-last (mapcar (lambda (sub-node)
+                         (if (stringp sub-node)
+                             (list sub-node)
+                           (let ((sub-nodes (slot-value sub-node 'sub-nodes)))
+                             (if sub-nodes
+                                 sub-nodes
+                               (or (and (listp sub-node) sub-node)
+                                   (list (spelunk--node-name sub-node)))))))
+                       nodes)
+    (apply #'append)))
+
 (cl-defmethod spelunk--print-tree ((tree spelunk-tree) current-node)
   "Print TREE vertically so that the start of your search is at the top.
 
 CURRENT-NODE is printed in *bold* to indicate that it's the
 current node."
+  (cl-declare (type 'spelunk-tree current-node))
   (cl-labels
       ((iter (trees)
              (progn
                (dolist (tree trees)
-                 (let* ((is-name (stringp tree))
-                        (node-name (or (and is-name tree)
-                                       (spelunk--node-name tree)))
-                        (name-length (length node-name))
-                        (width-of-children (if is-name
-                                               name-length
-                                             (apply #'+ (mapcar #'spelunk--max-width
-                                                                (slot-value tree 'sub-nodes)))))
-                        (max-width (+ 2 (max name-length width-of-children)))
-                        (whitespace-padding (/ (- max-width name-length) 2))
-                        (left-padding (ceiling whitespace-padding))
-                        (right-padding (floor whitespace-padding)))
-                   (cl-loop for i from 0 below left-padding
-                            do (insert " "))
-                   (insert node-name)
-                   (when (eq current-node tree)
-                     (overlay-put (make-overlay (- (point) name-length) (point))
-                                  'face
-                                  'bold))
-                   (cl-loop for i from 0 below right-padding
-                            do (insert " "))))
+                 (spelunk--print-node tree current-node))
                (insert "\n")
                (let ((next-round
-                      (thread-last (mapcar (lambda (sub-node)
-                                             (if (stringp sub-node)
-                                                 (list sub-node)
-                                               (let ((sub-nodes (slot-value sub-node 'sub-nodes)))
-                                                 (if sub-nodes
-                                                     sub-nodes
-                                                   (or (and (listp sub-node) sub-node)
-                                                       (list (spelunk--node-name sub-node)))))))
-                                           trees)
-                        (apply #'append))))
+                      (spelunk--generate-next-nodes trees)))
                  (when (and next-round
                             (not (cl-every #'stringp next-round)))
                    (iter next-round))))))
