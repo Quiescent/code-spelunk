@@ -310,27 +310,47 @@ leave for printing children."
 '(let* ((right-tree (make-instance
                      'spelunk-tree
                      :node-tag 'teehee
-                     :sub-nodes (list (make-instance
-                                       'spelunk-tree
-                                       :node-tag 'test
-                                       :sub-nodes (list (make-instance 'spelunk-tree
-                                                                       :node-tag 'blerg
-                                                                       :sub-nodes '()))))))
+                     :sub-nodes (list
+                                 (make-instance
+                                  'spelunk-tree
+                                  :node-tag 'test
+                                  :sub-nodes (list
+                                              (make-instance 'spelunk-tree
+                                                             :node-tag 'blerg
+                                                             :sub-nodes '()))))))
         (tree (make-instance
                'spelunk-tree
                :node-tag 'blah
-               :sub-nodes (list (make-instance
-                                 'spelunk-tree
-                                 :node-tag 'blah
-                                 :sub-nodes (list (make-instance
-                                                   'spelunk-tree
-                                                   :node-tag 'haha
-                                                   :sub-nodes '())
-                                                  (make-instance
-                                                   'spelunk-tree
-                                                   :node-tag 'hehe
-                                                   :sub-nodes '())))
-                                right-tree))))
+               :sub-nodes (list
+                           (make-instance
+                            'spelunk-tree
+                            :node-tag 'blah-blah
+                            :sub-nodes (list
+                                        (make-instance
+                                         'spelunk-tree
+                                         :node-tag 'another-one
+                                         :sub-nodes (list
+                                                     (make-instance
+                                                      'spelunk-tree
+                                                      :node-tag 'deeper-on-left
+                                                      :sub-nodes (list
+                                                                  (make-instance
+                                                                   'spelunk-tree
+                                                                   :node-tag 'even-deeper
+                                                                   :sub-nodes (list
+                                                                               (make-instance
+                                                                                'spelunk-tree
+                                                                                :node-tag 'deepest-yet
+                                                                                :sub-nodes '())))))))
+                                        (make-instance
+                                         'spelunk-tree
+                                         :node-tag 'haha
+                                         :sub-nodes '())
+                                        (make-instance
+                                         'spelunk-tree
+                                         :node-tag 'hehe
+                                         :sub-nodes '())))
+                           right-tree))))
    (spelunk--print-tree tree right-tree))
 
 (provide 'code-spelunk)
