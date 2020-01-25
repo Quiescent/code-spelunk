@@ -234,12 +234,14 @@ Node is aligned according to the width of all it's children."
   (cl-declare (type 'spelunk-list-of-spelunk-tree nodes))
   (thread-last (mapcar (lambda (sub-node)
                          (if (stringp sub-node)
-                             (list (replace-regexp-in-string ".*" " " sub-node))
+                             sub-node
                            (let ((sub-nodes (slot-value sub-node 'sub-nodes)))
                              (if sub-nodes
                                  sub-nodes
                                (or (and (listp sub-node) sub-node)
-                                   (list (spelunk--node-name sub-node)))))))
+                                   (list (replace-regexp-in-string ".*"
+                                                                   " "
+                                                                   (spelunk--node-name sub-node))))))))
                        nodes)
     (apply #'append)))
 
