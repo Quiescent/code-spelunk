@@ -31,6 +31,11 @@ Effective when `spelunk-show-history-behaviour' is set to
   :group 'spelunk
   :type 'number)
 
+(defcustom spelunk-padding-width 1
+  "Spaces to insert either side of a node label when printing."
+  :group 'spelunk
+  :type 'number)
+
 (defun spelunk-list-of-spelunk-tree-p (x)
   "Produce t if X is a list of `spelunk-tree's."
   (cl-every #'spelunk-tree-p x))
@@ -193,10 +198,6 @@ See: `spelunk--record-navigation-event'."
        for found = (spelunk--find-by-sub-node-identifier sub-node identifier)
        when found return found)))
 
-(defun spelunk--other-if-zero (other x)
-  "Produce OTHER if X is 0 else X."
-  (if (eq x 0) other x))
-
 (cl-deftype spelunk-tree-or-label ()
   "Either a spelunk tree or the name of a node in such a tree."
   '(or spelunk-tree string))
@@ -214,9 +215,9 @@ Node is aligned according to the width of all it's children."
                         (spelunk--node-name tree)))
          (name-length (length node-name))
          ;; Problem is that this padding is added per sub node...
-         (max-width (+ 2 (if is-name
-                             name-length
-                           (spelunk--max-width tree))))
+         (max-width (if is-name
+                        name-length
+                      (spelunk--max-width tree spelunk-padding-width)))
          (whitespace-padding (/ (- max-width name-length) 2))
          (left-padding (ceiling whitespace-padding))
          (right-padding (floor whitespace-padding)))
@@ -241,9 +242,11 @@ Node is aligned according to the width of all it's children."
                              (if sub-nodes
                                  sub-nodes
                                (or (and (listp sub-node) sub-node)
-                                   (list (replace-regexp-in-string "."
-                                                                   " "
-                                                                   (spelunk--node-name sub-node))))))))
+                                   (list (coerce (make-vector
+                                                  (+ (* spelunk-padding-width 2)
+                                                     (length (spelunk--node-name sub-node)))
+                                                  ?\ )
+                                                 'string)))))))
                        nodes)
     (apply #'append)))
 
@@ -267,17 +270,20 @@ current node."
     (insert "\n")
     (iter (list tree))))
 
-(cl-defmethod spelunk--max-width ((tree spelunk-tree))
+(cl-defmethod spelunk--max-width ((tree spelunk-tree) &optional (padding 0))
   "Produce a count of all leaves in TREE.
 This is used when printing a tree to determine how much space to
-leave for printing children."
-  (spelunk--other-if-zero (length (spelunk--node-name tree))
-                          (cl-loop
-                           for sub-node in (slot-value tree 'sub-nodes)
-                           for current-width = (length (spelunk--node-name sub-node))
-                           summing (max current-width (or (and (null (slot-value sub-node 'sub-nodes))
-                                                               current-width)
-                                                          (spelunk--max-width sub-node))))))
+leave for printing children.
+
+Add PADDING for each label involved in the maximum length of
+subtrees."
+  (max (+ (* 2 padding) (length (spelunk--node-name tree)))
+       (cl-loop
+        for sub-node in (slot-value tree 'sub-nodes)
+        for current-width = (length (spelunk--node-name sub-node))
+        summing (+ (* 2 padding) (or (and (null (slot-value sub-node 'sub-nodes))
+                                          current-width)
+                                     (spelunk--max-width sub-node))))))
 
 (defun spelunk--update-navigation-tree (new-tree)
   "Set the current tree for this project to NEW-TREE."
