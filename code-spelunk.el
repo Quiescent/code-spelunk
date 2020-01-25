@@ -213,11 +213,9 @@ Node is aligned according to the width of all it's children."
          (node-name (or (and is-name tree)
                         (spelunk--node-name tree)))
          (name-length (length node-name))
-         (width-of-children (if is-name
-                                name-length
-                              (apply #'+ (mapcar #'spelunk--max-width
-                                                 (slot-value tree 'sub-nodes)))))
-         (max-width (+ 2 (max name-length width-of-children)))
+         (max-width (+ 2 (if is-name
+                             name-length
+                           (spelunk--max-width tree))))
          (whitespace-padding (/ (- max-width name-length) 2))
          (left-padding (ceiling whitespace-padding))
          (right-padding (floor whitespace-padding)))
@@ -272,9 +270,10 @@ leave for printing children."
   (spelunk--one-if-zero
    (cl-loop
     for sub-node in (slot-value tree 'sub-nodes)
-    summing (or (and (null (slot-value sub-node 'sub-nodes))
-                     (length (spelunk--node-name sub-node)))
-                (spelunk--max-width sub-node)))))
+    for current-width = (length (spelunk--node-name sub-node))
+    summing (max current-width (or (and (null (slot-value sub-node 'sub-nodes))
+                                        current-width)
+                                   (spelunk--max-width sub-node))))))
 
 (defun spelunk--update-navigation-tree (new-tree)
   "Set the current tree for this project to NEW-TREE."
