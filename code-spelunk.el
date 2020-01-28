@@ -44,12 +44,25 @@ Effective when `spelunk-show-history-behaviour' is set to
   "A list of `spelunk-tree's."
   '(satisfies spelunk-list-of-spelunk-tree-p))
 
+(cl-deftype spelunk-optional-location ()
+  "Either a `spelunk-location' or NIL."
+  '(or spelunk-location-p null))
+
 (defclass spelunk-tree ()
   ((node-tag  :initarg :node-tag
               :type symbol)
    (sub-nodes :initarg :sub-nodes
-              :type spelunk-list-of-spelunk-tree))
+              :type spelunk-list-of-spelunk-tree)
+   (location  :initarg :location
+              :type spelunk-optional-location))
   "A node the tree of code navigation actions taken in a spelunking session.")
+
+(defclass spelunk-location ()
+  ((file-path :initarg :file-path
+              :type string)
+   (position  :initarg :position
+              :type number))
+  "A representation of a location in an arbitrary file.")
 
 (defun spelunk-history-record-p (x)
   "Produce t if X is a cons of two `spelunk-tree's.
@@ -85,23 +98,27 @@ If we were navigating to the definition (i.e. using
 symbol which we're heading to.  If we're going back (i.e. using
 `xref-pop-marker-stack'), then it'll be null."
   (cl-declare (type (or 'string 'null) identifier))
-  (pcase (spelunk--retrieve-navigation-tree)
-    (`(,root . ,current-node)
-     (spelunk--update-navigation-tree
-      (if identifier
-          (let ((key       (intern identifier))
-                (sub-nodes (slot-value current-node 'sub-nodes)))
-            (cl-labels ((find-sub-node (sub-node) (eq (slot-value sub-node 'node-tag) key)))
-              (if (some #'find-sub-node sub-nodes)
-                  (cons root (find-if #'find-sub-node sub-nodes))
-                (let* ((sub-node (make-instance 'spelunk-tree
-                                                'node-tag key
-                                                'sub-nodes '())))
-                  (push sub-node (slot-value current-node 'sub-nodes))
-                  (cons root sub-node)))))
-        (cons root
-              (spelunk--find-by-sub-node-identifier root
-                                                    (slot-value current-node 'node-tag))))))))
+  (let ((symbol (or (and identifier (thing-at-point 'symbol)) nil)))
+    (pcase (spelunk--retrieve-navigation-tree)
+      (`(,root . ,current-node)
+       (spelunk--update-navigation-tree
+        (if symbol
+            (let ((key       (intern symbol))
+                  (sub-nodes (slot-value current-node 'sub-nodes)))
+              (cl-labels ((find-sub-node (sub-node) (eq (slot-value sub-node 'node-tag) key)))
+                (if (cl-some #'find-sub-node sub-nodes)
+                    (cons root (cl-find-if #'find-sub-node sub-nodes))
+                  (let* ((sub-node (make-instance 'spelunk-tree
+                                                  :node-tag key
+                                                  :sub-nodes '()
+                                                  :location (make-instance 'spelunk-location
+                                                                           :file-path (buffer-file-name)
+                                                                           :position  (point)))))
+                    (push sub-node (slot-value current-node 'sub-nodes))
+                    (cons root sub-node)))))
+          (cons root
+                (spelunk--find-by-sub-node-identifier root
+                                                      (slot-value current-node 'node-tag)))))))))
 
 (defun spelunk--close-window-by-buffer-name (buffer-name)
   "Close the window which is currently showing BUFFER-NAME."
@@ -242,11 +259,11 @@ Node is aligned according to the width of all it's children."
                              (if sub-nodes
                                  sub-nodes
                                (or (and (listp sub-node) sub-node)
-                                   (list (coerce (make-vector
-                                                  (+ (* spelunk-padding-width 2)
-                                                     (length (spelunk--node-name sub-node)))
-                                                  ?\ )
-                                                 'string)))))))
+                                   (list (cl-coerce (make-vector
+                                                     (+ (* spelunk-padding-width 2)
+                                                        (length (spelunk--node-name sub-node)))
+                                                     ?\ )
+                                                    'string)))))))
                        nodes)
     (apply #'append)))
 
