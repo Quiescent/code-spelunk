@@ -1,0 +1,84 @@
+* Bugs
+
+** TODO Navigating earlier than the root goes into a bad state
+Description: going back in the tree beyond the root node results in a
+state where all subsequent attempts to modify the tree fail.
+
+Recipe:
+ - Open a buffer.
+ - Activate tracking.
+ - Navigate to a definition with ~xref-find-definitions~.
+ - Run ~xref-pop-marker-stack~ twice.
+ - Run ~xref-find-definitions~.
+
+Observed behaviour:
+ - Error is produced: =slot-value: Wrong type argument: (or eieio-object class), nil, obj=
+
+Expected behaviour:
+ - It should simply start recording from the root again.
+ - It should *not* produce any errors.
+
+* Features
+
+** TODO Print the edges in the tree
+The tree is currently printed with nodes simply stacked on top of each
+other.  It would be nice to draw the edges between parents and
+children.
+
+** TODO Keep parent nodes in child nodes to make going back trivial and accurate
+Right now I "go back" in the tree by traversing it from the root and
+finding the parent of the node who's child is has the name of the
+current node.  This is not general, e.g. there could be many tags with
+the same name in a code base!  If I simply stored the parent of a node
+then this problem disappears.
+
+** TODO Implement two modes for useful implementation
+It doesn't make sense to keep the tree around for an entire
+programming session.  If you did so then the tree would become a
+conglomeration of odd pieces of the code base where you did and didn't
+use ~xref-find-definitions~ to move around.
+
+It would be more useful to either explicitly start sessions, or to
+have the system automatically start sessions and trash older trees
+after some reasonable interval of time has expired.
+
+*** TODO Mode 1: Transient tree
+~code-spelunk-transient-tracking-mode~ should be a global mode with the following rules:
+ - A tree should be created for your current session when one doesn't
+   exist.
+ - When a tree does exist then track it using the usual rules.
+ - When a tree exists, but it's existed for more than
+   ~code-spelunk-transient-session-length~ seconds then delete the
+   tree and start from scratch.
+ - Modes ~code-spelunk-transient-tracking-mode~ and
+   ~code-spelunk-explicit-session-mode~ are mutually exclusive.
+
+*** TODO Mode 2: Explicit Spelunking sessions
+~code-spelunk-explicit-session-mode~ should be a global mode with the
+following rules:
+ - A user starts tracking a session by running the command
+   ~code-spelunk-start-session~.
+ - A user ends a tracking session by running the command
+   ~code-spelunk-end-session~.
+ - When a session ends then all trees are cleared.
+ - When a session begins then all trees are cleared.
+ - Modes ~code-spelunk-transient-tracking-mode~ and
+   ~code-spelunk-explicit-session-mode~ are mutually exclusive.
+
+** TODO Render the tree with Graphviz
+I recently encountered a package which visualises hierarchies from org
+buffers using Graphviz.  It gave me the idea to try that very thing
+for printing the tree.
+
+** TODO Add key bindings while the visualisation is active for moving in it
+~xref-pop-marker-stack~ and ~xref-goto-definition~ in combination
+don't have the same effect as navigating a tree of tags.  If you use
+~xref-pop-marker-stack~ then it wont necessarily go up in the tree
+because ~xref~ uses a *marker ring*.
+
+This feature proposes the addition of key bindings to go up, down,
+left and right in the tree.
+
+** TODO Turn the entries in the history window into links
+It would be nice if you could hit enter or click on the entries in the
+tree visualisation window and navigate straight to the definition.
