@@ -49,7 +49,9 @@ Effective when `spelunk-show-history-behaviour' is set to
   '(or spelunk-location-p null))
 
 (defclass spelunk-tree ()
-  ((node-tag  :initarg :node-tag
+  ((parent    :initarg :parent
+              :type spelunk-tree)
+   (node-tag  :initarg :node-tag
               :type symbol)
    (sub-nodes :initarg :sub-nodes
               :type spelunk-list-of-spelunk-tree)
@@ -109,6 +111,7 @@ symbol which we're heading to.  If we're going back (i.e. using
                 (if (cl-some #'find-sub-node sub-nodes)
                     (cons root (cl-find-if #'find-sub-node sub-nodes))
                   (let* ((sub-node (make-instance 'spelunk-tree
+                                                  :parent current-node
                                                   :node-tag key
                                                   :sub-nodes '()
                                                   :location (make-instance 'spelunk-location
@@ -116,9 +119,7 @@ symbol which we're heading to.  If we're going back (i.e. using
                                                                            :position  (point)))))
                     (push sub-node (slot-value current-node 'sub-nodes))
                     (cons root sub-node)))))
-          (cons root
-                (spelunk--find-by-sub-node-identifier root
-                                                      (slot-value current-node 'node-tag)))))))))
+          (cons root (slot-value current-node 'parent))))))))
 
 (defun spelunk--close-window-by-buffer-name (buffer-name)
   "Close the window which is currently showing BUFFER-NAME."
@@ -204,17 +205,6 @@ See: `spelunk--record-navigation-event'."
   (advice-remove #'xref-find-definitions #'spelunk-show-history)
   (advice-remove #'xref-pop-marker-stack #'spelunk--record-navigation-event)
   (advice-remove #'xref-pop-marker-stack #'spelunk-show-history))
-
-(cl-defmethod spelunk--find-by-sub-node-identifier ((tree spelunk-tree) identifier)
-  "Find the node in TREE which is identified by IDENTIFIER."
-  (cl-declare (type 'symbol identifier))
-  (or (cl-loop
-       for sub-node in (slot-value tree 'sub-nodes)
-       when (eq (slot-value sub-node 'node-tag) identifier) return tree)
-      (cl-loop
-       for sub-node in (slot-value tree 'sub-nodes)
-       for found = (spelunk--find-by-sub-node-identifier sub-node identifier)
-       when found return found)))
 
 (cl-deftype spelunk-tree-or-label ()
   "Either a spelunk tree or the name of a node in such a tree."
@@ -331,55 +321,71 @@ subtrees."
             (let ((tree (make-instance 'spelunk-tree
                                        :node-tag 'root
                                        :sub-nodes '())))
+              (setf (slot-value tree 'parent) tree)
               (cons tree tree))))))
 
 
 
 ;; Example tree
-'(let* ((right-tree (make-instance
-                     'spelunk-tree
-                     :node-tag 'teehee
-                     :sub-nodes (list
-                                 (make-instance
-                                  'spelunk-tree
-                                  :node-tag 'test
-                                  :sub-nodes (list
-                                              (make-instance 'spelunk-tree
-                                                             :node-tag 'blerg
-                                                             :sub-nodes '()))))))
+'(let* ((right-sub-2 (make-instance 'spelunk-tree
+                                    :node-tag 'blerg
+                                    :sub-nodes '()))
+        (right-sub-1 (make-instance 'spelunk-tree
+                                    :node-tag 'test
+                                    :sub-nodes '()))
+        (right-tree (make-instance 'spelunk-tree
+                                   :node-tag 'teehee
+                                   :sub-nodes '()))
+        (left-sub-1-1-4 (make-instance 'spelunk-tree
+                                       :node-tag 'deepest-yet
+                                       :sub-nodes '()))
+        (left-sub-1-1-3 (make-instance 'spelunk-tree
+                                       :node-tag 'even-deeper
+                                       :sub-nodes '()))
+        (left-sub-1-1-2 (make-instance 'spelunk-tree
+                                       :node-tag 'deeper-on-left
+                                       :sub-nodes '()))
+        (left-sub-1-1 (make-instance 'spelunk-tree
+                                     :node-tag 'another-one
+                                     :sub-nodes '()))
+        (left-sub-1-2 (make-instance 'spelunk-tree
+                                     :node-tag 'haha
+                                     :sub-nodes '()))
+        (left-sub-1-3 (make-instance 'spelunk-tree
+                                     :node-tag 'hehe
+                                     :sub-nodes '()))
+        (left-tree (make-instance
+                    'spelunk-tree
+                    :node-tag 'blah-blah
+                    :sub-nodes '()))
         (tree (make-instance
                'spelunk-tree
                :node-tag 'blah
-               :sub-nodes (list
-                           (make-instance
-                            'spelunk-tree
-                            :node-tag 'blah-blah
-                            :sub-nodes (list
-                                        (make-instance
-                                         'spelunk-tree
-                                         :node-tag 'another-one
-                                         :sub-nodes (list
-                                                     (make-instance
-                                                      'spelunk-tree
-                                                      :node-tag 'deeper-on-left
-                                                      :sub-nodes (list
-                                                                  (make-instance
-                                                                   'spelunk-tree
-                                                                   :node-tag 'even-deeper
-                                                                   :sub-nodes (list
-                                                                               (make-instance
-                                                                                'spelunk-tree
-                                                                                :node-tag 'deepest-yet
-                                                                                :sub-nodes '())))))))
-                                        (make-instance
-                                         'spelunk-tree
-                                         :node-tag 'haha
-                                         :sub-nodes '())
-                                        (make-instance
-                                         'spelunk-tree
-                                         :node-tag 'hehe
-                                         :sub-nodes '())))
-                           right-tree))))
+               :sub-nodes '())))
+   (setf (slot-value right-sub-1 'parent) right-tree)
+   (setf (slot-value right-tree 'sub-nodes) (list right-sub-1))
+
+   (setf (slot-value right-sub-2 'parent) right-sub-1)
+   (setf (slot-value right-sub-1 'sub-nodes) (list right-sub-2))
+   
+   (setf (slot-value left-sub-1-1 'parent) left-tree)
+   (push left-sub-1-1 (slot-value left-tree 'sub-nodes))
+   
+   (setf (slot-value left-sub-1-2 'parent) left-tree)
+   (push left-sub-1-2 (slot-value left-tree 'sub-nodes))
+   
+   (setf (slot-value left-sub-1-3 'parent) left-tree)
+   (push left-sub-1-3 (slot-value left-tree 'sub-nodes))
+   
+   (setf (slot-value left-sub-1-1-2 'parent) left-sub-1-1)
+   (setf (slot-value left-sub-1-1 'sub-nodes) (list left-sub-1-1-2))
+   
+   (setf (slot-value left-sub-1-1-3 'parent) left-sub-1-1-2)
+   (setf (slot-value left-sub-1-1-2 'sub-nodes) (list left-sub-1-1-3))
+
+   (setf (slot-value tree 'parent) tree)
+   (setf (slot-value tree 'sub-nodes) (list left-tree right-tree))
+
    (spelunk--print-tree tree right-tree))
 
 (provide 'code-spelunk)
