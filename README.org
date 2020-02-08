@@ -1,0 +1,29 @@
+* Introduction
+Welcome to Code Spelunk -- a tool which aims to assist programmers who
+embark on deep code explorations.
+
+If you're unsure what a "deep code exploration" is then let me
+explain.  It's often the case on new code projects and on projects
+which are very large that you don't have a complete mental model of
+the code.  Often the programmer is left wondering about the details of
+an implementation and (in my experience) spends many hours navigating
+to the definitions of functions until a sufficient understanding of
+some aspect of the code is achieved.  This process is what I call a
+"deep code exploration".
+
+During this process it's quite common for the network of functions
+navigated to and from to get very complicated.  It can become hard to
+remember where you were mere moments ago.
+
+I often find myself asking myself questions like:
+ - Where did I end up?
+ - Where was that conditional branch where I inspected the first
+   branch?
+ - What parts of the system did the functions involved touch?
+
+Often I'll traverse the same series of functions several times before
+I internalise the answers to these questions and questions like them.
+I've often wondered whether a visualisation of this process would
+improve it.
+
+Enter Code Spelunk...
