@@ -90,6 +90,10 @@ because ~xref~ uses a *marker ring*.
 This feature proposes the addition of key bindings to go up, down,
 left and right in the tree.
 
-** TODO [8] Turn the entries in the history window into links
+** DONE [8] Turn the entries in the history window into links
+   CLOSED: [2020-02-09 Sun 11:52]
+   :LOGBOOK:
+   - CLOSING NOTE [2020-02-09 Sun 11:52]
+   :END:
 It would be nice if you could hit enter or click on the entries in the
 tree visualisation window and navigate straight to the definition.

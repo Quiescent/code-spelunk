@@ -9,6 +9,7 @@
 (require 'cl-lib)
 (require 'subr-x)
 (require 'project)
+(require 'widget)
 
 (defgroup spelunk nil
   "The customisation options for spelunk."
@@ -231,13 +232,27 @@ Node is aligned according to the width of all it's children."
          (right-padding (floor whitespace-padding)))
     (cl-loop for i from 0 below left-padding
              do (insert " "))
-    (insert node-name)
+    (widget-create 'link
+                   :button-face 'default
+                   :button-prefix ""
+                   :button-suffix ""
+                   :action (spelunk-goto-node tree)
+                   node-name)
     (when (eq tree current-node)
       (overlay-put (make-overlay (- (point) name-length) (point))
                    'face
                    'bold))
     (cl-loop for i from 0 below right-padding
              do (insert " "))))
+
+(defun spelunk-goto-node (node)
+  "Produce a function which will go to the location which created NODE."
+  (cl-declare (type 'spelunk-tree node))
+  (lambda (&rest _) (if (slot-boundp node 'location)
+                        (let ((location (slot-value node 'location)))
+                          (find-file-other-window (slot-value location 'file-path))
+                          (goto-char (slot-value location 'position)))
+                      (message "No location for: %s" (spelunk--node-name node)))))
 
 (defun spelunk--generate-next-nodes (nodes)
   "Expand NODES to a flat list of their child nodes."
