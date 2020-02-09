@@ -150,6 +150,61 @@ symbol which we're heading to.  If we're going back (i.e. using
        (goto-char (point-min))
        (search-forward (spelunk--node-name current-node))))))
 
+(defvar spelunk--history-transient-map
+  (let ((keymap (make-keymap)))
+    (define-key keymap (kbd "M-n") #'spelunk-history-move-deeper)
+    (define-key keymap (kbd "M-p") #'spelunk-history-move-shallower)
+    (define-key keymap (kbd "M-f") #'spelunk-history-move-right)
+    (define-key keymap (kbd "M-b") #'spelunk-history-move-left)
+    keymap)
+  "A transient setup for keybindings while the history is visible.")
+
+(defun spelunk-history-move-deeper ()
+  "Move one deeper in the history tree.
+
+i.e. in the opposite direction of root.
+
+Does not place the point into the history tree."
+  (interactive)
+  (progn
+    (message "move deeper")
+    (set-transient-map spelunk--history-transient-map)))
+
+(defun spelunk-history-move-shallower ()
+  "Move one shallower in the history tree.
+
+When there are many sub-nodes, then select the left most.
+
+i.e. in the direction or root."
+  (interactive)
+  (progn
+    (message "move shallower")
+    (set-transient-map spelunk--history-transient-map)))
+
+(defun spelunk-history-move-right ()
+  "Move one sibling node to the right.
+
+When there are no siblings then no movement occurs.
+
+i.e. move to this nodes parent, and then back down, but one child
+to the right of the current node."
+  (interactive)
+  (progn
+    (message "move right")
+    (set-transient-map spelunk--history-transient-map)))
+
+(defun spelunk-history-move-left ()
+  "Move one sibling node to the left.
+
+When there are no siblings then no movement occurs.
+
+i.e. move to this nodes parent, and then back down, but one child
+to the left of the current node."
+  (interactive)
+  (progn
+    (message "move left")
+    (set-transient-map spelunk--history-transient-map)))
+
 (defun spelunk-show-history (&rest _)
   "Show the history of code navigations in other window.
 
@@ -157,6 +212,7 @@ Window will exist for `spelunk--show-history-duration' before
 dissapearing."
   (let ((history-buffer-name (spelunk--history-buffer-name))
         (original-window     (selected-window)))
+    (set-transient-map spelunk--history-transient-map)
     (with-current-buffer (switch-to-buffer-other-window (get-buffer-create history-buffer-name))
       (when spelunk-history-view-mode
         (spelunk-history-view-mode -1))
@@ -169,7 +225,11 @@ dissapearing."
                                                                                         xref-pop-marker-stack
                                                                                         widget-button-click
                                                                                         widget-button-press
-                                                                                        mouse-drag-region))))
+                                                                                        mouse-drag-region
+                                                                                        spelunk-history-move-deeper
+                                                                                        spelunk-history-move-shallower
+                                                                                        spelunk-history-move-right
+                                                                                        spelunk-history-move-left))))
                                                       (spelunk--close-window-by-buffer-name history-buffer-name)
                                                       (remove-hook 'post-command-hook #'close-spelunk-history))))
          (run-at-time 0.1 nil (lambda () (add-hook 'post-command-hook #'close-spelunk-history)))))
