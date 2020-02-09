@@ -168,6 +168,7 @@ dissapearing."
                                                                    (memq last-command '(xref-find-definitions
                                                                                         xref-pop-marker-stack
                                                                                         widget-button-click
+                                                                                        widget-button-press
                                                                                         mouse-drag-region))))
                                                       (message "last command %s" last-command)
                                                       (spelunk--close-window-by-buffer-name history-buffer-name)
