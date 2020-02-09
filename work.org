@@ -81,7 +81,11 @@ I recently encountered a package which visualises hierarchies from org
 buffers using Graphviz.  It gave me the idea to try that very thing
 for printing the tree.
 
-** TODO [7] Add key bindings while the visualisation is active for moving in it
+** DONE [7] Add key bindings while the visualisation is active for moving in it
+   CLOSED: [2020-02-09 Sun 13:07]
+   :LOGBOOK:
+   - CLOSING NOTE [2020-02-09 Sun 13:07]
+   :END:
 ~xref-pop-marker-stack~ and ~xref-goto-definition~ in combination
 don't have the same effect as navigating a tree of tags.  If you use
 ~xref-pop-marker-stack~ then it wont necessarily go up in the tree

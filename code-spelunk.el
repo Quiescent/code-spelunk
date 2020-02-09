@@ -143,12 +143,12 @@ symbol which we're heading to.  If we're going back (i.e. using
   (pcase (spelunk--retrieve-navigation-tree)
     (`(,root . ,current-node)
      (progn
+       (remove-overlays)
        (read-only-mode -1)
        (delete-region (point-min) (point-max))
        (spelunk--print-tree root current-node)
        (read-only-mode 1)
-       (goto-char (point-min))
-       (search-forward (spelunk--node-name current-node))))))
+       (goto-char (point-min))))))
 
 (defvar spelunk--history-transient-map
   (let ((keymap (make-keymap)))
@@ -167,8 +167,14 @@ i.e. in the opposite direction of root.
 Does not place the point into the history tree."
   (interactive)
   (progn
-    (message "move deeper")
-    (set-transient-map spelunk--history-transient-map)))
+    (pcase (spelunk--retrieve-navigation-tree)
+      (`(,root . ,current-node)
+       (spelunk--update-navigation-tree
+        (let ((new-current (or (car (slot-value current-node 'sub-nodes)) current-node)))
+          (spelunk-goto-node-no-window-switch new-current)
+          (cons root new-current)))))
+    (set-transient-map spelunk--history-transient-map)
+    (spelunk-show-history)))
 
 (defun spelunk-history-move-shallower ()
   "Move one shallower in the history tree.
@@ -178,8 +184,14 @@ When there are many sub-nodes, then select the left most.
 i.e. in the direction or root."
   (interactive)
   (progn
-    (message "move shallower")
-    (set-transient-map spelunk--history-transient-map)))
+    (pcase (spelunk--retrieve-navigation-tree)
+      (`(,root . ,current-node)
+       (spelunk--update-navigation-tree
+        (let ((new-current (slot-value current-node 'parent)))
+          (spelunk-goto-node-no-window-switch new-current)
+          (cons root new-current)))))
+    (set-transient-map spelunk--history-transient-map)
+    (spelunk-show-history)))
 
 (defun spelunk-history-move-right ()
   "Move one sibling node to the right.
@@ -190,8 +202,28 @@ i.e. move to this nodes parent, and then back down, but one child
 to the right of the current node."
   (interactive)
   (progn
-    (message "move right")
-    (set-transient-map spelunk--history-transient-map)))
+    (pcase (spelunk--retrieve-navigation-tree)
+      (`(,root . ,current-node)
+       (spelunk--update-navigation-tree
+        (let ((new-current (spelunk--right-of current-node)))
+          (spelunk-goto-node-no-window-switch new-current)
+          (cons root new-current)))))
+    (set-transient-map spelunk--history-transient-map)
+    (spelunk-show-history)))
+
+(defun spelunk--right-of (tree)
+  "Produce the sibling node of TREE to the right.
+
+When there's no sibling nodes to the right of this node then
+produce this node."
+  (cl-declare (type tree 'spelunk-tree))
+  (let* ((parent   (slot-value tree   'parent))
+         (children (slot-value parent 'sub-nodes)))
+    (or (cl-loop with previous-node
+                 for node in children
+                 when (eq previous-node tree) return node
+                 do (setq previous-node node))
+        tree)))
 
 (defun spelunk-history-move-left ()
   "Move one sibling node to the left.
@@ -202,8 +234,28 @@ i.e. move to this nodes parent, and then back down, but one child
 to the left of the current node."
   (interactive)
   (progn
-    (message "move left")
-    (set-transient-map spelunk--history-transient-map)))
+    (pcase (spelunk--retrieve-navigation-tree)
+      (`(,root . ,current-node)
+       (spelunk--update-navigation-tree
+        (let ((new-current (spelunk--left-of current-node)))
+          (spelunk-goto-node-no-window-switch new-current)
+          (cons root new-current)))))
+    (set-transient-map spelunk--history-transient-map)
+    (spelunk-show-history)))
+
+(defun spelunk--left-of (tree)
+  "Produce the sibling node of TREE to the left.
+
+When there's no sibling nodes to the left of this node then
+produce this node."
+  (cl-declare (type tree 'spelunk-tree))
+  (let* ((parent   (slot-value tree   'parent))
+         (children (slot-value parent 'sub-nodes)))
+    (or (cl-loop with previous-node
+                 for node in children
+                 when (and previous-node (eq node tree)) return previous-node
+                 do (setq previous-node node))
+        tree)))
 
 (defun spelunk-show-history (&rest _)
   "Show the history of code navigations in other window.
@@ -319,6 +371,15 @@ Node is aligned according to the width of all it's children."
                           (goto-char (slot-value location 'position))
                           (other-window 1))
                       (message "No location for: %s" (spelunk--node-name node)))))
+
+(defun spelunk-goto-node-no-window-switch (node)
+  "Go to the location which created NODE."
+  (cl-declare (type 'spelunk-tree node))
+  (if (slot-boundp node 'location)
+      (let ((location (slot-value node 'location)))
+        (find-file (slot-value location 'file-path))
+        (goto-char (slot-value location 'position)))
+    (message "No location for: %s" (spelunk--node-name node))))
 
 (defun spelunk--generate-next-nodes (nodes)
   "Expand NODES to a flat list of their child nodes."
