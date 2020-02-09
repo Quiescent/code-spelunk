@@ -170,7 +170,6 @@ dissapearing."
                                                                                         widget-button-click
                                                                                         widget-button-press
                                                                                         mouse-drag-region))))
-                                                      (message "last command %s" last-command)
                                                       (spelunk--close-window-by-buffer-name history-buffer-name)
                                                       (remove-hook 'post-command-hook #'close-spelunk-history))))
          (run-at-time 0.1 nil (lambda () (add-hook 'post-command-hook #'close-spelunk-history)))))
@@ -257,7 +256,8 @@ Node is aligned according to the width of all it's children."
   (lambda (&rest _) (if (slot-boundp node 'location)
                         (let ((location (slot-value node 'location)))
                           (find-file-other-window (slot-value location 'file-path))
-                          (goto-char (slot-value location 'position)))
+                          (goto-char (slot-value location 'position))
+                          (other-window 1))
                       (message "No location for: %s" (spelunk--node-name node)))))
 
 (defun spelunk--generate-next-nodes (nodes)
