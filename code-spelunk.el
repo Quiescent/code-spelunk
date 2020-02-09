@@ -163,8 +163,13 @@ dissapearing."
       (spelunk-history-view-mode 1))
     (cl-case spelunk-show-history-behaviour
       (show-until-next-command
-       (cl-labels ((close-spelunk-history (&rest _) (when (not (or (eq last-command 'xref-find-definitions)
-                                                                   (eq last-command 'xref-pop-marker-stack)))
+       (cl-labels ((close-spelunk-history (&rest _) (when (not (or (string-equal (buffer-name (current-buffer))
+                                                                                 history-buffer-name)
+                                                                   (memq last-command '(xref-find-definitions
+                                                                                        xref-pop-marker-stack
+                                                                                        widget-button-click
+                                                                                        mouse-drag-region))))
+                                                      (message "last command %s" last-command)
                                                       (spelunk--close-window-by-buffer-name history-buffer-name)
                                                       (remove-hook 'post-command-hook #'close-spelunk-history))))
          (run-at-time 0.1 nil (lambda () (add-hook 'post-command-hook #'close-spelunk-history)))))
