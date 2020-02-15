@@ -53,7 +53,11 @@ It would be more useful to either explicitly start sessions, or to
 have the system automatically start sessions and trash older trees
 after some reasonable interval of time has expired.
 
-*** TODO [4] Mode 1: Transient tree
+*** DONE [4] Mode 1: Transient tree
+    CLOSED: [2020-02-15 Sat 12:57]
+    :LOGBOOK:
+    - CLOSING NOTE [2020-02-15 Sat 12:57]
+    :END:
 ~code-spelunk-transient-tracking-mode~ should be a global mode with the following rules:
  - A tree should be created for your current session when one doesn't
    exist.

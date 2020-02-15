@@ -38,6 +38,11 @@ Effective when `spelunk-show-history-behaviour' is set to
   :group 'spelunk
   :type 'number)
 
+(defcustom spelunk-transient-tree-duration 30
+  "The amount of seconds to keep trees before starting a new tree."
+  :group 'spelunk
+  :type 'number)
+
 (defun spelunk-list-of-spelunk-tree-p (x)
   "Produce t if X is a list of `spelunk-tree's."
   (cl-every #'spelunk-tree-p x))
@@ -83,6 +88,11 @@ node."
 
 (defvar spelunk--trees-per-project (make-hash-table :test #'equal)
   "A record of the navigations made per project.")
+
+(defvar spelunk--tree-creation-times-per-project (make-hash-table :test #'equal)
+  "A record of the time at which each navigation tree was created.
+
+Tree's are keyed by the project for which they were created.")
 
 ;; TODO: needs to handle the case that xref didn't find a tag
 ;; (maybe?).
@@ -302,7 +312,26 @@ dissapearing."
   "Create a name for the buffer to show the code navigation.
 
 Buffer name is unique per project."
-  (format "*spelunk:%s*" (spelunk--current-project-tree-key)))
+  (format "*spelunk:%s*" (car (spelunk--current-project-tree-key))))
+
+(define-minor-mode spelunk-transient-tracking-mode
+  "Have `code-spelunk' automatically start and stop recording transiently.
+
+`code-spelunk' will record the time of your last interaction with
+either `xref-find-definition' and `xref-pop-marker-stack' or your
+last interaction with tree navigation
+commands (`spelunk-history-move-left' etc.).  If your last
+invocation of one of those commands was longer than
+`spelunk-transient-tree-duration' then it will start a new
+tree.
+
+The timeout is managed on a per project basis."
+  :init-value nil
+  :lighter nil
+  :group 'spelunk
+  (if spelunk-transient-tracking-mode
+      (spelunk--start-recording)
+    (spelunk--stop-recording)))
 
 (defun spelunk--start-recording ()
   "Start recording code navigation events on a per-project basis.
@@ -434,7 +463,13 @@ subtrees."
 (defun spelunk--update-navigation-tree (new-tree)
   "Set the current tree for this project to NEW-TREE."
   (cl-declare (type 'spelunk-history-record new-tree))
-  (setf (map-elt spelunk--trees-per-project (spelunk--current-project-tree-key)) new-tree))
+  (setf (map-elt spelunk--trees-per-project (car (spelunk--current-project-tree-key))) new-tree))
+
+(defun spelunk--retrieve-navigation-tree-creation-time (&optional tree-key)
+  "Produce the time at which the project identified by TREE-KEY was created."
+  (cl-declare (type 'string tree-key))
+  (if tree-key (map-elt spelunk--tree-creation-times-per-project tree-key)
+    (map-elt spelunk--tree-creation-times-per-project (car (spelunk--current-project-tree-key)))))
 
 (defun spelunk--current-project-tree-key ()
   "Produce the key for the current project's tree.
@@ -454,16 +489,19 @@ Produce a new key as an additional value."
 (defun spelunk--retrieve-navigation-tree ()
   "Find the navigation tree applicable for the current `default-directory'."
   (cl-multiple-value-bind (existing-tree-key new-tree-key) (spelunk--current-project-tree-key)
-    (if existing-tree-key
-        (gethash existing-tree-key spelunk--trees-per-project)
-      ;; TODO: assuming that it's the first project here.  See
-      ;; previous note.
-      (setf (map-elt spelunk--trees-per-project new-tree-key)
-            (let ((tree (make-instance 'spelunk-tree
-                                       :node-tag 'root
-                                       :sub-nodes '())))
-              (setf (slot-value tree 'parent) tree)
-              (cons tree tree))))))
+    (if (and existing-tree-key (< (float-time (time-subtract (current-time)
+                                                             (spelunk--retrieve-navigation-tree-creation-time
+                                                              existing-tree-key)))
+                                  spelunk-transient-tree-duration))
+        (progn
+          (setf (map-elt spelunk--tree-creation-times-per-project new-tree-key) (current-time))
+          (map-elt spelunk--trees-per-project existing-tree-key))
+      (setf (map-elt spelunk--tree-creation-times-per-project new-tree-key) (current-time)
+            (map-elt spelunk--trees-per-project new-tree-key) (let ((tree (make-instance 'spelunk-tree
+                                                                                         :node-tag 'root
+                                                                                         :sub-nodes '())))
+                                                                (setf (slot-value tree 'parent) tree)
+                                                                (cons tree tree))))))
 
 
 
