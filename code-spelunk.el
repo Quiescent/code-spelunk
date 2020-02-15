@@ -328,6 +328,7 @@ tree.
 The timeout is managed on a per project basis."
   :init-value nil
   :lighter nil
+  :global t
   :group 'spelunk
   (if spelunk-transient-tracking-mode
       (spelunk--start-recording)
