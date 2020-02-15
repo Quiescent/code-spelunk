@@ -24,6 +24,25 @@ Expected behaviour:
  - It should simply start recording from the root again.
  - It should *not* produce any errors.
 
+** TODO [2] Adding to tree when xref doesn't find destination
+Description: when ~xref-find-definitions~ doesn't find a location for
+the definition ~spelunk~ is still adding an entry to the tree as
+though we jumped.
+
+Recipe:
+ - Open a buffer.
+ - Activate tracking.
+ - Navigate to a definition which doesn't exist with
+   ~xref-find-definitions~.
+
+Observed behaviour:
+ - ~xref~ produces an error that there are no suitable definitions.
+ - ~spelunk~ adds a history node to the tree.
+
+Expected behaviour:
+ - ~xref~ produces an error that there are no suitable definitions.
+ - ~spelunk~ does *not* add a history node to the tree.
+
 * Features
 
 ** TODO [1] Print the edges in the tree
