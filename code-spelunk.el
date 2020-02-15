@@ -7,6 +7,7 @@
 (require 'map)
 (require 'eieio)
 (require 'cl-lib)
+(require 'cl-macs)
 (require 'subr-x)
 (require 'project)
 (require 'widget)
@@ -301,12 +302,7 @@ dissapearing."
   "Create a name for the buffer to show the code navigation.
 
 Buffer name is unique per project."
-  (let* ((candidate-projects (project-roots (project-current)))
-         (existing-tree-key  (thread-last candidate-projects
-                               ;; TODO: what if multiple trees match?
-                               ;; Do I need to store the mode as well?
-                               (car))))
-    (format "*spelunk:%s*" existing-tree-key)))
+  (format "*spelunk:%s*" (spelunk--current-project-tree-key)))
 
 (defun spelunk--start-recording ()
   "Start recording code navigation events on a per-project basis.
@@ -438,28 +434,31 @@ subtrees."
 (defun spelunk--update-navigation-tree (new-tree)
   "Set the current tree for this project to NEW-TREE."
   (cl-declare (type 'spelunk-history-record new-tree))
-  (let ((existing-tree-key  (thread-last (project-roots (project-current))
-                              (cl-remove-if-not (apply-partially #'map-contains-key
-                                                                 spelunk--trees-per-project))
-                              ;; TODO: what if multiple trees match?
-                              ;; Do I need to store the mode as well?
-                              (car))))
-    (setf (gethash existing-tree-key spelunk--trees-per-project) new-tree)))
+  (setf (map-elt spelunk--trees-per-project (spelunk--current-project-tree-key)) new-tree))
 
-(defun spelunk--retrieve-navigation-tree ()
-  "Find the navigation tree applicable for the current `default-directory'."
+(defun spelunk--current-project-tree-key ()
+  "Produce the key for the current project's tree.
+
+Produce a new key as an additional value."
   (let* ((candidate-projects (project-roots (project-current)))
+         ;; TODO: assuming that it's the first project here.
+         (new-tree-key       (car candidate-projects))
          (existing-tree-key  (thread-last candidate-projects
                                (cl-remove-if-not (apply-partially #'map-contains-key
                                                                   spelunk--trees-per-project))
                                ;; TODO: what if multiple trees match?
                                ;; Do I need to store the mode as well?
                                (car))))
+    (cl-values existing-tree-key new-tree-key)))
+
+(defun spelunk--retrieve-navigation-tree ()
+  "Find the navigation tree applicable for the current `default-directory'."
+  (cl-multiple-value-bind (existing-tree-key new-tree-key) (spelunk--current-project-tree-key)
     (if existing-tree-key
         (gethash existing-tree-key spelunk--trees-per-project)
       ;; TODO: assuming that it's the first project here.  See
       ;; previous note.
-      (setf (map-elt spelunk--trees-per-project (car candidate-projects))
+      (setf (map-elt spelunk--trees-per-project new-tree-key)
             (let ((tree (make-instance 'spelunk-tree
                                        :node-tag 'root
                                        :sub-nodes '())))
