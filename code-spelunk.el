@@ -391,18 +391,24 @@ Node is aligned according to the width of all it's children."
          (right-padding (floor whitespace-padding)))
     (cl-loop for i from 0 below left-padding
              do (insert " "))
-    (widget-create 'link
-                   :button-face 'default
-                   :button-prefix ""
-                   :button-suffix ""
-                   :action (spelunk-goto-node tree)
-                   node-name)
+    (if (typep tree 'spelunk-tree)
+        (spelunk--tree-link tree node-name)
+      (insert node-name))
     (when (eq tree current-node)
       (overlay-put (make-overlay (- (point) name-length) (point))
                    'face
                    'bold))
     (cl-loop for i from 0 below right-padding
              do (insert " "))))
+
+(defun spelunk--tree-link (tree node-name)
+  "Create a widget link to jump point TREE with text NODE-NAME."
+  (widget-create 'link
+                 :button-face 'default
+                 :button-prefix ""
+                 :button-suffix ""
+                 :action (spelunk-goto-node tree)
+                 node-name))
 
 (defun spelunk-goto-node (node)
   "Produce a function which will go to the location which created NODE."
