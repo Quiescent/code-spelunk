@@ -275,6 +275,19 @@ produce this node."
                  do (setq previous-node node))
         tree)))
 
+
+(defconst spelunk-commands-which-dont-close-history
+  '(xref-find-definitions
+    xref-pop-marker-stack
+    widget-button-click
+    widget-button-press
+    mouse-drag-region
+    spelunk-history-move-deeper
+    spelunk-history-move-shallower
+    spelunk-history-move-right
+    spelunk-history-move-left)
+  "Commands which wont auto close the history window.")
+
 (defun spelunk-show-history (&rest _)
   "Show the history of code navigations in other window.
 
@@ -289,19 +302,13 @@ dissapearing."
       (spelunk-history-view-mode 1))
     (cl-case spelunk-show-history-behaviour
       (show-until-next-command
-       (cl-labels ((close-spelunk-history (&rest _) (when (not (or (string-equal (buffer-name (current-buffer))
-                                                                                 history-buffer-name)
-                                                                   (memq last-command '(xref-find-definitions
-                                                                                        xref-pop-marker-stack
-                                                                                        widget-button-click
-                                                                                        widget-button-press
-                                                                                        mouse-drag-region
-                                                                                        spelunk-history-move-deeper
-                                                                                        spelunk-history-move-shallower
-                                                                                        spelunk-history-move-right
-                                                                                        spelunk-history-move-left))))
-                                                      (spelunk--close-window-by-buffer-name history-buffer-name)
-                                                      (remove-hook 'post-command-hook #'close-spelunk-history))))
+       (cl-labels ((close-spelunk-history
+                    (&rest _)
+                    (when (not (or (string-equal (buffer-name (current-buffer))
+                                                 history-buffer-name)
+                                   (memq last-command spelunk-commands-which-dont-close-history)))
+                      (spelunk--close-window-by-buffer-name history-buffer-name)
+                      (remove-hook 'post-command-hook #'close-spelunk-history))))
          (run-at-time 0.1 nil (lambda () (add-hook 'post-command-hook #'close-spelunk-history)))))
       (show-until-seconds
        (run-at-time spelunk-show-history-seconds
