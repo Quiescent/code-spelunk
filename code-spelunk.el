@@ -132,6 +132,8 @@ symbol which we're heading to.  If we're going back (i.e. using
 
 Use the current position in the current buffer as the location
 which created the node."
+  (cl-declare (type 'spelunk-tree parent)
+              (type 'symbol key))
   (make-instance 'spelunk-tree
                  :parent parent
                  :node-tag key
