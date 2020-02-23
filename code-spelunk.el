@@ -122,16 +122,23 @@ symbol which we're heading to.  If we're going back (i.e. using
               (cl-labels ((find-sub-node (sub-node) (eq (slot-value sub-node 'node-tag) key)))
                 (if (cl-some #'find-sub-node sub-nodes)
                     (cons root (cl-find-if #'find-sub-node sub-nodes))
-                  (let* ((sub-node (make-instance 'spelunk-tree
-                                                  :parent current-node
-                                                  :node-tag key
-                                                  :sub-nodes '()
-                                                  :location (make-instance 'spelunk-location
-                                                                           :file-path (buffer-file-name)
-                                                                           :position  (point)))))
+                  (let* ((sub-node (spelunk--make-node-here current-node key)))
                     (push sub-node (slot-value current-node 'sub-nodes))
                     (cons root sub-node)))))
           (cons root (slot-value current-node 'parent))))))))
+
+(defun spelunk--make-node-here (parent key)
+  "Create a sub-node for PARENT for navigation point KEY.
+
+Use the current position in the current buffer as the location
+which created the node."
+  (make-instance 'spelunk-tree
+                 :parent parent
+                 :node-tag key
+                 :sub-nodes '()
+                 :location (make-instance 'spelunk-location
+                                          :file-path (buffer-file-name)
+                                          :position  (point))))
 
 (defun spelunk--close-window-by-buffer-name (buffer-name)
   "Close the window which is currently showing BUFFER-NAME."
