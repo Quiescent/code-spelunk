@@ -522,11 +522,15 @@ Produce a new key as an additional value."
           (setf (map-elt spelunk--tree-creation-times-per-project new-tree-key) (current-time))
           (map-elt spelunk--trees-per-project existing-tree-key))
       (setf (map-elt spelunk--tree-creation-times-per-project new-tree-key) (current-time)
-            (map-elt spelunk--trees-per-project new-tree-key) (let ((tree (make-instance 'spelunk-tree
-                                                                                         :node-tag 'root
-                                                                                         :sub-nodes '())))
-                                                                (setf (slot-value tree 'parent) tree)
-                                                                (cons tree tree))))))
+            (map-elt spelunk--trees-per-project new-tree-key) (spelunk--root-node)))))
+
+(defun spelunk--root-node ()
+  "Create the root node."
+  (let ((tree (make-instance 'spelunk-tree
+                             :node-tag 'root
+                             :sub-nodes '())))
+    (setf (slot-value tree 'parent) tree)
+    (cons tree tree)))
 
 
 
