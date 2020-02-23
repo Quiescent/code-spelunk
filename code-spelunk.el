@@ -403,6 +403,8 @@ Node is aligned according to the width of all it's children."
 
 (defun spelunk--tree-link (tree node-name)
   "Create a widget link to jump point TREE with text NODE-NAME."
+  (cl-declare (type 'spelunk-tree tree)
+              (type 'string node-name))
   (widget-create 'link
                  :button-face 'default
                  :button-prefix ""
